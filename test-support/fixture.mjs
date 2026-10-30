@@ -10,8 +10,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { compressFrame, scanFrames } from "../src/zstd.mjs";
-import { readSession } from "../src/session.mjs";
+import { compressFrame, scanFrames } from "../cli/src/zstd.mjs";
+import { readSession } from "../cli/src/session.mjs";
 
 export const MISSING_ID = crypto.createHash("sha256").update("missing-image").digest("hex");
 export const MISSING_SHADOWED_ID = crypto.createHash("sha256").update("missing-image-shadowed").digest("hex");

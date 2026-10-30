@@ -13,11 +13,11 @@ import {
   MISSING_ID,
   MISSING_SHADOWED_ID,
 } from "../test-support/fixture.mjs";
-import { readSession } from "../src/session.mjs";
-import { applyFix, listBackups, pendingFixes, restoreBackup } from "../src/repair.mjs";
+import { readSession } from "../cli/src/session.mjs";
+import { applyFix, listBackups, pendingFixes, restoreBackup } from "../cli/src/repair.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const cli = path.join(here, "..", "bin", "dsh-fix-attachments.mjs");
+const cli = path.join(here, "..", "cli", "bin", "dsh-fix-attachments.mjs");
 
 function tmpRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "dsh-fixture-"));

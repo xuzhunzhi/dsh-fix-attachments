@@ -1,0 +1,7 @@
+# dsh-fix-attachments 的挂载声明。
+#
+# id 必须全局唯一、与包名一致：商城预检按它比对 entryIds。
+# 注意：`- id:` 那一行不能写行尾注释，预检的正则要求值后面直接换行。
+- insert:
+    - id: dsh-fix-attachments
+      name: 'dsh-fix-attachments'

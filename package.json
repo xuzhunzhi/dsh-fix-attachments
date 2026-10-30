@@ -1,20 +1,24 @@
 {
   "name": "dsh-fix-attachments",
   "version": "0.1.0",
-  "description": "Rescue DeepSeek Harness sessions that fail every turn with \"DeepSeek Messages transport failed\" because a referenced attachment object was deleted",
+  "description": "修「附件对象被删 → 会话永远报 DeepSeek Messages transport failed」：DSH 插件（进程内自愈）+ 离线 CLI",
   "license": "MIT",
   "type": "module",
-  "bin": {
-    "dsh-fix-attachments": "bin/dsh-fix-attachments.mjs"
-  },
+  "main": "index.js",
   "exports": {
-    ".": "./src/cli.mjs",
-    "./repair": "./src/repair.mjs",
-    "./session": "./src/session.mjs"
+    ".": "./index.js",
+    "./cli/repair": "./cli/src/repair.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-fix-attachments": "cli/bin/dsh-fix-attachments.mjs"
   },
   "files": [
-    "bin",
-    "src",
+    "index.js",
+    "cordis.patch.yml",
+    "cli/bin",
+    "cli/src",
+    "docs/upstream-issue.md",
     "README.md",
     "README.en.md",
     "LICENSE"
@@ -26,19 +30,34 @@
     "test": "node --test"
   },
   "keywords": [
-    "deepseek",
+    "dsh-plugin",
     "deepseek-harness",
+    "deepseek",
     "dsh",
     "attachment",
-    "zstd",
+    "image",
+    "recovery",
     "rescue",
-    "recovery"
+    "transport-failed",
+    "zstd",
+    "cordis"
   ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.2.1-rc.5": "compatible"
+      }
+    }
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/xuzhunzhi/dsh-fix-attachments.git"
+    "url": "git+https://github.com/xuzhunzhi/dsh-fix-attachments.git"
   },
   "bugs": {
     "url": "https://github.com/xuzhunzhi/dsh-fix-attachments/issues"
-  }
+  },
+  "homepage": "https://github.com/xuzhunzhi/dsh-fix-attachments#readme"
 }

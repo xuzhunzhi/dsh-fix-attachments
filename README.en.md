@@ -1,85 +1,92 @@
 # dsh-fix-attachments
 
-> Rescue a DeepSeek Harness session that fails **every** turn with `DeepSeek Messages transport failed` because an attachment object referenced by its history was deleted.
+> A DeepSeek Harness plugin for the session that fails **every** turn with `DeepSeek Messages transport failed`: it degrades unreadable images to placeholder text and lets the turn continue.
 
-中文说明见 [README.md](README.md)（primary documentation is Chinese; this file is the English mirror).
+Category: **Development & Operations** · MIT · [中文说明](README.md)
 
----
+## What it is worth
 
-## Symptom checklist
+Before: a session becomes permanently unable to send messages — start over or hand-edit a zstd artifact.
+After: the turn repairs itself in place and retries, so the user only notices a short pause.
 
-You are in the right place if all of these hold:
+## Symptom
 
-- One specific session fails on **every** turn with `DeepSeek Messages transport failed` (`code: TRANSPORT`).
-- Each attempt dies in **20–60 ms** and **no HTTP request is ever sent** — this is the decisive signal.
-- The turn retries 5 times with backoff, then fails.
-- Other sessions on the same machine, same provider, same model work fine.
-- Network / proxy / API key / provider changes make no difference.
-- That session's history contains images (read, screenshots, uploads).
+- One session fails on **every** turn: `DeepSeek Messages transport failed` (`code: TRANSPORT`)
+- Each attempt dies in **20–60 ms** with **no HTTP request sent** — the decisive signal
+- 5 retries with backoff, all failing
+- Other sessions on the same machine/model/provider are fine
+- The history contains images
 
-The real error is `ATTACHMENT_NOT_FOUND` — a content-addressed attachment object is gone — and the DeepSeek Messages adapter wraps every non-LLM error thrown during request preparation into `TRANSPORT`. The label is misleading: this is a purely local failure.
+Root cause: attachment objects are content-addressed under `<DSH_HOME>/attachments/v1/objects/<xx>/<sha256>`. Once an object is deleted, `prepareImages` re-reads it on every request, throws `ATTACHMENT_NOT_FOUND`, and the DeepSeek Messages adapter wraps any non-LLM error into `TRANSPORT`. Nothing to do with the network; the retries are wasted.
 
-## What it does
+## Two forms, one judgement
 
-1. Decompresses every frame of `session.vN.jsonl.zstd` (concatenated, checksummed zstd frames).
-2. Reconstructs the **current surface** from each `compaction/*` event's `shadowedSeqs`, so messages a compaction dropped are never targeted.
-3. Finds image references on that surface whose object is missing under `<DSH_HOME>/attachments/v1/objects/<xx>/<sha256>`.
-4. Appends **one** `image/offload` event (all targets merged) so the adapter sends placeholder text instead of reading those bytes.
-5. Backs up before writing and fully re-reads/verifies after writing (frame count, line count, last event, zero residual work).
+| Form | When | How |
+| --- | --- | --- |
+| **Plugin** (recommended) | everyday: repairs in-process, no restart, no manual step | install into a profile |
+| **Offline CLI** | when the app cannot start, or to audit all sessions | `node cli/bin/dsh-fix-attachments.mjs scan` |
 
-The images themselves cannot be recovered (content-addressed storage), but the session talks again.
-
-## Quick start
+## Install
 
 ```bash
-# 0) quit DeepSeek Harness first (see Safety)
-node bin/dsh-fix-attachments.mjs scan                       # report only
-node bin/dsh-fix-attachments.mjs fix --apply --session 642c6f37
-# 3) start DeepSeek Harness again and send one message
+dsh plugin --profile desktop add dsh-fix-attachments          # once published to npm
+dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments   # from source
 ```
 
-CLI messages are currently Chinese; the JSON output (`--json`) is language-neutral.
+Optional config through the profile's `cordis.patch.yml`:
 
-## Commands
+```yaml
+- id: dsh-fix-attachments
+  name: 'dsh-fix-attachments'
+  config:
+    objectsRoot: '/path/to/attachments/v1/objects'
+    maxRepairsPerTurn: 3
+```
 
-| Command | Effect |
-| --- | --- |
-| `scan` | report only (default) |
-| `fix [--apply]` | append the offload event; dry run without `--apply` |
-| `backups --session <id>` | list backups |
-| `restore --session <id> [--stamp <t>] --apply` | roll back from a backup |
+## How the plugin works
 
-Options: `--session <substring>`, `--dsh-home <path>`, `--stamp <stamp>`, `--apply`, `--force`, `--json`.
-Exit codes: `0` ok, `1` error, `2` unsupported Node, `3` refused.
+It hooks the agent loop's `agent/request-error` waterfall — the same extension point the official context-overflow recovery and image-budget offload use:
 
-## Safety
+1. On a request error, check whether the code is `TRANSPORT` / `ATTACHMENT_NOT_FOUND`.
+2. Walk the **current surface** (`session.surface.nodes`, so messages a compaction dropped are excluded) and test each image reference for its object file; skip blocks already marked `offloaded`.
+3. If any are unreadable, append one `image/offload` event with all of them (`session.append`), the mechanism the official `compaction-image-offload` plugin already uses.
+4. Return `{ kind: 'retry' }` so the request retries immediately — a durable repair, not a provider retry: it spends no retry budget and logs no `llm/retry`.
+5. Nothing unreadable → `next()`, leaving genuine network errors untouched.
 
-- Read-only unless `--apply`.
-- **Refuses to write while DeepSeek Harness is running** (its in-memory next-sequence counter would collide with the appended event); quit it first, or pass `--force` only if you are certain nothing is using that session.
-- Refuses artifacts with a torn final frame or an unknown session format version.
-- Writes a `session.vN.jsonl.zstd.bak-<stamp>` backup next to the artifact.
-- Idempotent: a repaired session scans as `nothing to fix`.
+Two deliberate choices: it never inspects the `cause` chain (a real network failure is never masked), and repairs are bounded per turn (they also self-terminate, since repaired images become `offloaded`).
 
-## Upstream bug
+## Offline CLI
 
-This is a workaround. Objects disappear periodically and upstream still reports the same defect on 0.2.1-rc.5: [#6818](https://github.com/deepseek-ai/deepseek-harness/discussions/6818), [#7834](https://github.com/deepseek-ai/deepseek-harness/discussions/7834), [#9262](https://github.com/deepseek-ai/deepseek-harness/discussions/9262), [#10242](https://github.com/deepseek-ai/deepseek-harness/discussions/10242), [#10842](https://github.com/deepseek-ai/deepseek-harness/discussions/10842). The proper fix degrades unreadable images to placeholder text in `prepareImages` and surfaces `ATTACHMENT_NOT_FOUND` instead of `TRANSPORT`.
+```bash
+node cli/bin/dsh-fix-attachments.mjs scan                            # report only
+node cli/bin/dsh-fix-attachments.mjs fix --apply                     # write (quit DSH first)
+node cli/bin/dsh-fix-attachments.mjs backups --session <id>
+node cli/bin/dsh-fix-attachments.mjs restore --session <id> --apply
+```
 
-## Not this tool
+It decodes the frame container, reconstructs the compaction shadow set itself, appends one checksummed frame, and verifies by re-reading everything. It refuses to write while DSH is running (sequence collision), on a torn final frame, or on an unknown session format version.
 
-- Not a general zstd/log surgery utility — it only understands DSH session format v4 and `image/offload` semantics.
-- Does not patch the DSH installation, its plugins, or any bot code. It only appends one event to a session artifact.
-- Does not restore deleted image bytes.
+## Limits
+
+- Deleted image bytes never come back; the session just keeps working.
+- The root cause remains (objects keep disappearing — observed twice), so keep it installed.
+- Does not patch the DSH installation; it only appends one durable event.
+- Community project, not affiliated with DeepSeek AI.
+
+## Upstream defect
+
+See [#6818](https://github.com/deepseek-ai/deepseek-harness/discussions/6818), [#7834](https://github.com/deepseek-ai/deepseek-harness/discussions/7834), [#9262](https://github.com/deepseek-ai/deepseek-harness/discussions/9262), [#10242](https://github.com/deepseek-ai/deepseek-harness/discussions/10242), [#10842](https://github.com/deepseek-ai/deepseek-harness/discussions/10842). A paste-ready report is in [`docs/upstream-issue.md`](docs/upstream-issue.md).
 
 ## Compatibility
 
-Node ≥ 22.15 or ≥ 23 (synchronous `node:zlib` zstd API). Tested on 24.18. Windows/macOS/Linux. Session format v4 only; anything else is refused rather than guessed.
+DSH `0.2.1-rc.5` verified · Node ≥ 22.15 (CLI) · Windows/macOS/Linux · session format v4.
 
 ## Development
 
 ```bash
-npm test    # 9 cases: format probe, shadow exclusion, apply, idempotency, restore, torn frame, CLI dry run
+npm test    # node --test, 15 cases
 ```
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Not affiliated with DeepSeek; provided as-is without warranty. **It rewrites session log files** — read the safety section first.
+MIT — see [LICENSE](LICENSE). Provided as-is, without warranty.
