@@ -1,5 +1,9 @@
 # 上游 issue 草稿（可直接粘到 GitHub Discussions）
 
+> ✅ **已发布**：2026-10-30 → https://github.com/deepseek-ai/deepseek-harness/discussions/11520 （分类 `General`，与 #7834 / #9262 同类）
+>
+> 下面是当时发的原文留档；再发一次前先搜一下有没有更新的重复报告。
+
 > **怎么用**：把下面「--- 粘贴区 ---」之间的英文正文整段复制，
 > 发到 https://github.com/deepseek-ai/deepseek-harness/discussions（选 Bug / Q&A 均可）。
 > 标题用第一行的 `Title:`。已有重复报告可先在这些贴里回帖附证据：
