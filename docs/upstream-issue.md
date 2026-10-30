@@ -133,9 +133,15 @@ Only "the stored bytes cannot be produced" (`ATTACHMENT_NOT_FOUND` / `ATTACHMENT
 
 Attachments are content-addressed: the object name *is* the hash of its bytes. Once deleted there is no way to reconstruct the object from the session log or from the reference, so the session is **permanently** unable to send messages — the user's only options are "start a new session" or hand-edit the zstd artifact.
 
+### Related reports
+
+Same defect, still reproducible on `0.2.1-rc.5`: #6818, #7834, #9262, #10242, #10842.
+
 ### Workaround
 
 Until this is fixed, sessions can be rescued by appending a durable `image/offload` event covering the unreadable occurrences (the mechanism the compaction image-offload path already uses). I published a small MIT-licensed plugin + offline CLI that does this and verifies the result: https://github.com/xuzhunzhi/dsh-fix-attachments
+
+One more datapoint that may help triage: the accurate code is invisible to plugin authors too. `agent/request-error` hands listeners a `LlmFailure` with only `message / code / status / providerRetryAfterMs / requestId / offloadImages` — the `ATTACHMENT_NOT_FOUND` inside `cause` never reaches us, so the only way to tell "attachment is gone" from "network died" is to probe the attachment store ourselves on every failure.
 
 ---
 
