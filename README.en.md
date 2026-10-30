@@ -2,7 +2,7 @@
 
 > A DeepSeek Harness plugin for the session that fails **every** turn with `DeepSeek Messages transport failed`: it degrades unreadable images to placeholder text and lets the turn continue.
 
-Category: **Development & Operations** · MIT · [中文说明](README.md)
+Category: **Development & Operations** · MIT · [npm](https://www.npmjs.com/package/dsh-fix-attachments) · [中文说明](README.md)
 
 ## What it is worth
 
@@ -29,9 +29,10 @@ Root cause: attachment objects are content-addressed under `<DSH_HOME>/attachmen
 ## Install
 
 ```bash
-dsh plugin --profile desktop add dsh-fix-attachments          # once published to npm
-dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments   # from source
+dsh plugin --profile desktop add dsh-fix-attachments
 ```
+
+Published on npm: https://www.npmjs.com/package/dsh-fix-attachments (so it also shows up in the in-app plugin center). Source install also works: `dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments`.
 
 Optional config through the profile's `cordis.patch.yml`:
 

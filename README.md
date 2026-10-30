@@ -2,7 +2,7 @@
 
 > DeepSeek Harness 插件：**某条会话每轮都报 `DeepSeek Messages transport failed`** 时，自动把「读不出来的图片」降级成占位文本并让这一轮继续跑下去。
 
-能力分类：**开发与运维** · 许可证：MIT · [English](README.en.md)
+能力分类：**开发与运维** · MIT · [npm](https://www.npmjs.com/package/dsh-fix-attachments) · [English](README.en.md)
 
 ---
 
@@ -36,12 +36,10 @@
 ## 安装插件
 
 ```bash
-# 发布到 npm 之后（能进 DSH 内「插件中心」一键装）
 dsh plugin --profile desktop add dsh-fix-attachments
-
-# 或者直接从源码装（未发布 npm 时用这条）
-dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments
 ```
+
+（已发布到 npm：https://www.npmjs.com/package/dsh-fix-attachments —— 所以能出现在 DSH 内「插件中心」一键装。不想走 npm 也可以源码装：`dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments`）
 
 装完重启 DSH 即可，无需其它配置。想改配置就在 profile 的 `cordis.patch.yml` 里**按 entry id 做定向覆盖**（带 `id`、不带 `insert` 就是覆盖这一行；`config` 是整体替换、不深合并）：
 
