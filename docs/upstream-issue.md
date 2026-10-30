@@ -135,7 +135,7 @@ Attachments are content-addressed: the object name *is* the hash of its bytes. O
 
 ### Workaround
 
-Until this is fixed, sessions can be rescued by appending a durable `image/offload` event covering the unreadable occurrences (the mechanism the compaction image-offload path already uses). I published a small MIT-licensed tool that does this offline and verifies the result: `dsh-fix-attachments` — **`<repo URL here>`**.
+Until this is fixed, sessions can be rescued by appending a durable `image/offload` event covering the unreadable occurrences (the mechanism the compaction image-offload path already uses). I published a small MIT-licensed plugin + offline CLI that does this and verifies the result: https://github.com/xuzhunzhi/dsh-fix-attachments
 
 ---
 
