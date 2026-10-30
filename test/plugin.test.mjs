@@ -104,7 +104,7 @@ test("finds only unreadable images on the surface, skipping offloaded ones", () 
 test("repairs the request from the error waterfall and asks for one retry", async () => {
   const root = objectsRoot();
   const { ctx, listeners, logs, flushes } = fakeCtx();
-  apply(ctx, { objectsRoot: root });
+  apply(ctx, { objectsRoot: root, statePath: path.join(root, "state.json") });
 
   const handler = listeners.get("agent/request-error");
   assert.equal(typeof handler, "function");
@@ -129,7 +129,7 @@ test("repairs the request from the error waterfall and asks for one retry", asyn
 test("delegates when nothing is unreadable (so real network errors still surface)", async () => {
   const root = objectsRoot();
   const { ctx, listeners } = fakeCtx();
-  apply(ctx, { objectsRoot: root });
+  apply(ctx, { objectsRoot: root, statePath: path.join(root, "state.json") });
 
   const { session, appended } = fakeSession({ withMissing: false });
   let nextCalls = 0;
@@ -146,7 +146,7 @@ test("delegates when nothing is unreadable (so real network errors still surface
 test("ignores failures whose code is not attachment-related", async () => {
   const root = objectsRoot();
   const { ctx, listeners } = fakeCtx();
-  apply(ctx, { objectsRoot: root });
+  apply(ctx, { objectsRoot: root, statePath: path.join(root, "state.json") });
 
   const { session, appended } = fakeSession();
   let nextCalls = 0;
@@ -165,7 +165,7 @@ test("ignores failures whose code is not attachment-related", async () => {
 test("respects an aborted signal", async () => {
   const root = objectsRoot();
   const { ctx, listeners } = fakeCtx();
-  apply(ctx, { objectsRoot: root });
+  apply(ctx, { objectsRoot: root, statePath: path.join(root, "state.json") });
 
   const { session, appended } = fakeSession();
   let nextCalls = 0;
@@ -181,7 +181,7 @@ test("respects an aborted signal", async () => {
 test("caps repairs per turn so a broken artifact cannot loop forever", async () => {
   const root = objectsRoot();
   const { ctx, listeners } = fakeCtx();
-  apply(ctx, { objectsRoot: root, maxRepairsPerTurn: 2 });
+  apply(ctx, { objectsRoot: root, statePath: path.join(root, "state.json"), maxRepairsPerTurn: 2 });
 
   const handler = listeners.get("agent/request-error");
   const { session, appended } = fakeSession();
@@ -201,4 +201,27 @@ test("caps repairs per turn so a broken artifact cannot loop forever", async () 
   assert.deepEqual(third, { kind: "stop" }, "the cap must delegate instead of retrying forever");
   assert.equal(appended.length, 2);
   assert.equal(nextCalls, 1);
+});
+
+test("records a mount marker and updates it on every repair", async () => {
+  const root = objectsRoot();
+  const statePath = path.join(root, "state.json");
+  const { ctx, listeners } = fakeCtx();
+  apply(ctx, { objectsRoot: root, statePath });
+
+  const mounted = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  assert.equal(mounted.version, 1);
+  assert.equal(mounted.repairs, 0);
+  assert.equal(mounted.lastRepair, null);
+  assert.equal(mounted.objectsRoot, root);
+  assert.ok(typeof mounted.mountedAt === "string" && mounted.mountedAt.length > 0);
+
+  const { session } = fakeSession();
+  await listeners.get("agent/request-error")(payload(session), async () => ({ kind: "stop" }));
+
+  const after = JSON.parse(fs.readFileSync(statePath, "utf8"));
+  assert.equal(after.repairs, 1);
+  assert.equal(after.lastRepair.turn, 1);
+  assert.deepEqual(after.lastRepair.targets, [{ seq: 1, imageIndexes: [0] }]);
+  assert.ok(typeof after.lastRepair.at === "string" && after.lastRepair.at.length > 0);
 });

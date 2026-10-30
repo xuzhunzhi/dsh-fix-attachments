@@ -44,6 +44,16 @@ Optional config through the profile's `cordis.patch.yml`:
 
 (An entry with `id` and no `insert` is a targeted override — it replaces that entry's `config` wholesale. Install only through `dsh plugin ... add`; do not hand-write the profile's `package.json` or insertion rows.)
 
+## Verify it is running
+
+On mount the plugin writes a small state file (and updates it on every repair) — the first place to look when "it does not seem to do anything":
+
+```bash
+cat ~/.dsh/storages/dsh-fix-attachments-state.json
+```
+
+`mountedAt` present ⇒ the plugin was loaded. `repairs` / `lastRepair` show what it actually fixed.
+
 ## How the plugin works
 
 It hooks the agent loop's `agent/request-error` waterfall — the same extension point the official context-overflow recovery and image-budget offload use:

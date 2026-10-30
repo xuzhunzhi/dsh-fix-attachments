@@ -54,6 +54,28 @@ dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments
 
 > 安装只走 `dsh plugin ... add`（包自带的 `cordis.patch.yml` 会声明 entry）；**不要**为了安装去手写 profile 的 `package.json` 或 patch 里的 `insert` 行。
 
+### 装完怎么确认它在跑
+
+插件**挂载时**会写一个留痕文件（每次修复更新计数），排查"为什么没生效"第一眼看它：
+
+```bash
+cat ~/.dsh/storages/dsh-fix-attachments-state.json
+```
+
+```json
+{
+  "version": 1,
+  "mountedAt": "2026-10-30T04:35:12.345Z",
+  "objectsRoot": "C:\\Users\\you\\.dsh\\attachments\\v1\\objects",
+  "maxRepairsPerTurn": 3,
+  "repairs": 0,
+  "lastRepair": null
+}
+```
+
+- `mountedAt` 有值 = 插件确实被加载了（没有这个文件 = 没挂上，检查 profile 的 bundles 与 DSH 版本）。
+- `repairs` / `lastRepair` = 它实际修过几次、最后一次修了哪些 `seq`。
+
 ## 插件怎么修
 
 挂的是 agent loop 的 `agent/request-error` waterfall——和官方的上下文溢出恢复、图片预算 offload 是同一个扩展点：

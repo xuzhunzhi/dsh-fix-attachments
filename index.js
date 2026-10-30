@@ -97,10 +97,32 @@ function offloadMessageImages(message, indexes) {
 /** 附件对象根目录：优先配置，其次 $DSH_HOME，最后 ~/.dsh。 */
 export function resolveObjectsRoot(config = {}) {
   if (typeof config.objectsRoot === "string" && config.objectsRoot.length > 0) return config.objectsRoot;
-  const home = process.env.DSH_HOME && process.env.DSH_HOME.length > 0
+  return path.join(resolveDshHome(), "attachments", "v1", "objects");
+}
+
+/** DSH 主目录：$DSH_HOME 优先，其次 ~/.dsh。 */
+export function resolveDshHome() {
+  return process.env.DSH_HOME && process.env.DSH_HOME.length > 0
     ? process.env.DSH_HOME
     : path.join(os.homedir(), ".dsh");
-  return path.join(home, "attachments", "v1", "objects");
+}
+
+/** 留痕文件：证明插件挂上了、修过几次（排查"为什么没生效"第一眼看这里）。 */
+export function resolveStatePath(config = {}) {
+  if (typeof config.statePath === "string" && config.statePath.length > 0) return config.statePath;
+  return path.join(resolveDshHome(), "storages", "dsh-fix-attachments-state.json");
+}
+
+/**
+ * 重写留痕文件。只写小的固定结构；任何失败都吞掉——诊断绝不能影响主流程。
+ */
+function writeState(statePath, state) {
+  try {
+    fs.mkdirSync(path.dirname(statePath), { recursive: true });
+    fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  } catch {
+    // 留痕尽力而为
+  }
 }
 
 /**
@@ -168,6 +190,18 @@ export function apply(ctx, config = {}) {
     // 核心已经注册过同类型投影：我们的追加照样生效，忽略。
   }
 
+  // 留痕：挂载即写一次，之后的每次修复更新计数。排查"为什么没生效"先看它。
+  const statePath = resolveStatePath(config);
+  const state = {
+    version: 1,
+    mountedAt: new Date().toISOString(),
+    objectsRoot,
+    maxRepairsPerTurn,
+    repairs: 0,
+    lastRepair: null,
+  };
+  writeState(statePath, state);
+
   /** session -> { turn, count } */
   const repairs = new WeakMap();
 
@@ -202,6 +236,9 @@ export function apply(ctx, config = {}) {
     }
 
     repairs.set(session, { turn, count: used + 1 });
+    state.repairs += 1;
+    state.lastRepair = { at: new Date().toISOString(), turn, targets };
+    writeState(statePath, state);
     ctx.logger?.info?.(
       `dsh-fix-attachments: ${unreadable} unreadable image occurrence(s) in ${targets.length} message(s) marked as offloaded; retrying the request`,
     );
