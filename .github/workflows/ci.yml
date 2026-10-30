@@ -18,10 +18,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Node has the synchronous zstd API?
-        run: node -e "const z=require('node:zlib'); if(typeof z.zstdCompressSync!=='function'){console.error('no zstd: '+process.version);process.exit(1)}"
-      - run: npm test
-      - name: Plugin exports apply() as required by the plugin spec
-        run: node -e "import('./index.js').then(m=>{if(typeof m.apply!=='function'){console.error('missing apply(ctx)');process.exit(1)}; if(m.name!=='dsh-fix-attachments'){console.error('bad name');process.exit(1)}; console.log('ok')})"
+      - name: Show runtime
+        run: |
+          node --version
+      - name: Node has the synchronous zstd API
+        run: |
+          node -e "const z=require('node:zlib'); if (typeof z.zstdCompressSync!=='function') { console.error('no-sync-zstd ' + process.version); process.exit(1) } console.log('zstd ok')"
+      - name: Test suites
+        run: |
+          npm test
+      - name: Plugin exports apply(ctx) as the plugin spec requires
+        run: |
+          node -e "import('./index.js').then(m=>{ if (typeof m.apply!=='function') { console.error('missing-apply'); process.exit(1) } if (m.name!=='dsh-fix-attachments') { console.error('bad-name'); process.exit(1) } console.log('plugin ok') })"
       - name: CLI prints usage
-        run: node cli/bin/dsh-fix-attachments.mjs --help
+        run: |
+          node cli/bin/dsh-fix-attachments.mjs --help
