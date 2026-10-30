@@ -43,15 +43,16 @@ dsh plugin --profile desktop add dsh-fix-attachments
 dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments
 ```
 
-装完重启 DSH 即可，无需其它配置。想改配置就在 profile 的 `cordis.patch.yml` 里按 entry id 覆盖：
+装完重启 DSH 即可，无需其它配置。想改配置就在 profile 的 `cordis.patch.yml` 里**按 entry id 做定向覆盖**（带 `id`、不带 `insert` 就是覆盖这一行；`config` 是整体替换、不深合并）：
 
 ```yaml
 - id: dsh-fix-attachments
-  name: 'dsh-fix-attachments'
   config:
     objectsRoot: 'D:\other-dsh-home\attachments\v1\objects'   # 可选：附件库换过位置时
     maxRepairsPerTurn: 3                                      # 可选：每轮最多修几次
 ```
+
+> 安装只走 `dsh plugin ... add`（包自带的 `cordis.patch.yml` 会声明 entry）；**不要**为了安装去手写 profile 的 `package.json` 或 patch 里的 `insert` 行。
 
 ## 插件怎么修
 
@@ -62,6 +63,8 @@ dsh plugin --profile desktop add github:xuzhunzhi/dsh-fix-attachments
    逐个图片引用检查对象文件在不在；**已标记 offloaded 的跳过**；
 3. 找到了就 `session.append('image/offload', { targets })`——这是官方既有的机制
    （官方 `compaction-image-offload` 插件在图片超预算时用的就是它），追加后适配器把这些图换成占位文本；
+   随后 `await ctx.sessions.flush(session)` 过一道**持久化屏障**（append 只是写进内存会话，
+   官方口径：需要屏障的消费者要自己 await flush）；
 4. 返回 `{ kind: 'retry' }` 让这一轮**立刻重试**（这种「持久修复后的重试」不消耗 provider 重试预算，也不会记一条 `llm/retry`）；
 5. 没有可修的图 → `next()`，把真网络错误原样交给下游。
 

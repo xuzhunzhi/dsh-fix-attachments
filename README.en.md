@@ -37,11 +37,12 @@ Optional config through the profile's `cordis.patch.yml`:
 
 ```yaml
 - id: dsh-fix-attachments
-  name: 'dsh-fix-attachments'
   config:
     objectsRoot: '/path/to/attachments/v1/objects'
     maxRepairsPerTurn: 3
 ```
+
+(An entry with `id` and no `insert` is a targeted override — it replaces that entry's `config` wholesale. Install only through `dsh plugin ... add`; do not hand-write the profile's `package.json` or insertion rows.)
 
 ## How the plugin works
 
@@ -49,7 +50,7 @@ It hooks the agent loop's `agent/request-error` waterfall — the same extension
 
 1. On a request error, check whether the code is `TRANSPORT` / `ATTACHMENT_NOT_FOUND`.
 2. Walk the **current surface** (`session.surface.nodes`, so messages a compaction dropped are excluded) and test each image reference for its object file; skip blocks already marked `offloaded`.
-3. If any are unreadable, append one `image/offload` event with all of them (`session.append`), the mechanism the official `compaction-image-offload` plugin already uses.
+3. If any are unreadable, append one `image/offload` event with all of them (`session.append`), the mechanism the official `compaction-image-offload` plugin already uses, then cross the durability barrier with `await ctx.sessions.flush(session)` (an append only lands in the in-memory session; callers that need durability await the flush).
 4. Return `{ kind: 'retry' }` so the request retries immediately — a durable repair, not a provider retry: it spends no retry budget and logs no `llm/retry`.
 5. Nothing unreadable → `next()`, leaving genuine network errors untouched.
 

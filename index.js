@@ -191,6 +191,16 @@ export function apply(ctx, config = {}) {
       return next();
     }
 
+    // 持久化屏障：append 只是写进内存会话，确认（ack）不等于落盘。
+    // 官方口径是"需要屏障的消费者 await ctx.sessions.flush(session)"。做不到也不影响
+    // 这一轮的重试（内存里已经有这条事件了），所以失败只记一条告警。
+    try {
+      await ctx.sessions?.flush?.(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.logger?.warn?.(`dsh-fix-attachments: offload decision is in memory but not flushed: ${message}`);
+    }
+
     repairs.set(session, { turn, count: used + 1 });
     ctx.logger?.info?.(
       `dsh-fix-attachments: ${unreadable} unreadable image occurrence(s) in ${targets.length} message(s) marked as offloaded; retrying the request`,

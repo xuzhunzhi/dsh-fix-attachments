@@ -53,11 +53,18 @@ function fakeSession({ withMissing = true } = {}) {
 function fakeCtx() {
   const listeners = new Map();
   const logs = [];
+  const flushes = [];
   return {
     listeners,
     logs,
+    flushes,
     ctx: {
-      sessions: { registerMessageProjection: () => {} },
+      sessions: {
+        registerMessageProjection: () => {},
+        flush: async (session) => {
+          flushes.push(session);
+        },
+      },
       logger: { info: (m) => logs.push(m), warn: (m) => logs.push(m) },
       on: (type, handler) => listeners.set(type, handler),
     },
@@ -96,7 +103,7 @@ test("finds only unreadable images on the surface, skipping offloaded ones", () 
 
 test("repairs the request from the error waterfall and asks for one retry", async () => {
   const root = objectsRoot();
-  const { ctx, listeners, logs } = fakeCtx();
+  const { ctx, listeners, logs, flushes } = fakeCtx();
   apply(ctx, { objectsRoot: root });
 
   const handler = listeners.get("agent/request-error");
@@ -114,6 +121,8 @@ test("repairs the request from the error waterfall and asks for one retry", asyn
   assert.equal(appended.length, 1);
   assert.equal(appended[0].type, "image/offload");
   assert.deepEqual(appended[0].data.targets, [{ seq: 1, imageIndexes: [0] }]);
+  assert.equal(flushes.length, 1, "the repair must be flushed before the retry");
+  assert.equal(flushes[0], session);
   assert.match(logs[0] ?? "", /1 unreadable image/);
 });
 
