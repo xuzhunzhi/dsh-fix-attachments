@@ -1,0 +1,25 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Node has the synchronous zstd API?
+        run: node -e "const z=require('node:zlib'); if(typeof z.zstdCompressSync!=='function'){console.error('no zstd: '+process.version);process.exit(1)}"
+      - run: npm test
+      - name: CLI prints usage
+        run: node bin/dsh-fix-attachments.mjs --help

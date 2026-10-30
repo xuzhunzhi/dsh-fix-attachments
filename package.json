@@ -1,0 +1,44 @@
+{
+  "name": "dsh-fix-attachments",
+  "version": "0.1.0",
+  "description": "Rescue DeepSeek Harness sessions that fail every turn with \"DeepSeek Messages transport failed\" because a referenced attachment object was deleted",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dsh-fix-attachments": "bin/dsh-fix-attachments.mjs"
+  },
+  "exports": {
+    ".": "./src/cli.mjs",
+    "./repair": "./src/repair.mjs",
+    "./session": "./src/session.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.15"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "attachment",
+    "zstd",
+    "rescue",
+    "recovery"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xuzhunzhi/dsh-fix-attachments.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xuzhunzhi/dsh-fix-attachments/issues"
+  }
+}

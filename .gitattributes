@@ -1,0 +1,3 @@
+# 统一用 LF（项目约定：UTF-8 无 BOM、LF、末尾换行）；.cmd 保留 CRLF
+* text=auto eol=lf
+*.cmd text eol=crlf
